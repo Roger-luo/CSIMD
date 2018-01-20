@@ -224,3 +224,65 @@ void CSIMD64(cdiv)(complex64 *z, const complex64 *x, const complex64 *y, const p
     z[off+i] = x[off+i] / y[off+i];
   }
 }
+
+void CSIMD64(divs)(complex64 *y, const complex64 *x, const complex64 c, const ptrdiff_t n) {
+  ptrdiff_t i, off;
+  float *my = (float *)y;
+  float *mx = (float *)x;
+  float real = crealf(c);
+  float imag = cimagf(c);
+  float norm = real * real + imag * imag;
+  ptrdiff_t len = 2 * n;
+  __m256 YMM15 = _mm256_set_ps(
+    real/norm, imag/norm,
+    real/norm, imag/norm,
+    real/norm, imag/norm,
+    real/norm, imag/norm);
+  __m256 YMM14 = _mm256_set_ps(
+    -imag/norm, real/norm,
+    -imag/norm, real/norm,
+    -imag/norm, real/norm,
+    -imag/norm, real/norm
+    );
+
+  __m256 YMM0, YMM1, YMM2, YMM3;
+  for (i=0; i<=((len)-16); i+=16) {
+    // load 8 complex numbers
+    YMM0 = _mm256_loadu_ps(mx+i);
+    YMM1 = _mm256_loadu_ps(mx+i+8);
+
+    // cal real & imag
+    YMM2 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM15),
+            _mm256_mul_ps(YMM1, YMM15));
+    YMM3 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM14),
+            _mm256_mul_ps(YMM1, YMM14));
+
+    // make them in order
+    YMM2 = _mm256_castpd_ps(
+      _mm256_permute4x64_pd(
+        _mm256_castps_pd(YMM2), 216));
+    YMM3 = _mm256_castpd_ps(
+      _mm256_permute4x64_pd(
+        _mm256_castps_pd(YMM3), 216));
+
+    // exchange
+    YMM0 = _mm256_permute2f128_ps(YMM2, YMM3, 32);
+    YMM1 = _mm256_permute2f128_ps(YMM2, YMM3, 49);
+
+    // make real and imag in correct order
+    // exchange inner 64bit first
+    YMM0 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM0), 216));
+    YMM1 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM1), 216));
+
+    YMM0 = _mm256_permute_ps(YMM0, 216);
+    YMM1 = _mm256_permute_ps(YMM1, 216);
+
+    _mm256_storeu_ps(my+i, YMM0);
+    _mm256_storeu_ps(my+i+8, YMM1);
+  }
+
+  off = (n) - ((n)%8);
+  for (i=0; i<((n)%8); i++) {
+    y[i] = x[i] / c;
+  }
+}
