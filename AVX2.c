@@ -18,12 +18,38 @@
 // 2.2 exchange in 128bit lane
 
 #define MAKE_COMPLEX64(YMM0, YMM1, REAL, IMAG) \
-    YMM0 = _mm256_permute2f128_ps(REAL, IMAG, 32); \
-    YMM1 = _mm256_permute2f128_ps(REAL, IMAG, 49); \
-    YMM0 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM0), 216)); \
-    YMM1 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM1), 216)); \
-    YMM0 = _mm256_permute_ps(YMM0, 216); \
-    YMM1 = _mm256_permute_ps(YMM1, 216);
+  YMM0 = _mm256_permute2f128_ps(REAL, IMAG, 32); \
+  YMM1 = _mm256_permute2f128_ps(REAL, IMAG, 49); \
+  YMM0 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM0), 216)); \
+  YMM1 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM1), 216)); \
+  YMM0 = _mm256_permute_ps(YMM0, 216); \
+  YMM1 = _mm256_permute_ps(YMM1, 216);
+
+
+#define HSUB_MUL_INORDER_PD(TARGET, YMM0, YMM1, YMM2, YMM3) \
+  TARGET = _mm256_hsub_pd(_mm256_mul_pd(YMM0, YMM2), \
+    _mm256_mul_pd(YMM1, YMM3)); \
+  TARGET = _mm256_permute4x64_pd(TARGET, 216);
+
+#define HADD_MUL_INORDER_PD(TARGET, YMM0, YMM1, YMM2, YMM3) \
+  TARGET = _mm256_hadd_pd(_mm256_mul_pd(YMM0, YMM2), \
+    _mm256_mul_pd(YMM1, YMM3)); \
+  TARGET = _mm256_permute4x64_pd(TARGET, 216);
+
+#define HSUB_MUL_INORDER_PS(TARGET, YMM0, YMM1, YMM2, YMM3) \
+  TARGET = _mm256_hsub_ps(_mm256_mul_ps(YMM0, YMM2), \
+    _mm256_mul_ps(YMM1, YMM3)); \
+  TARGET = _mm256_castpd_ps( \
+    _mm256_permute4x64_pd( \
+      _mm256_castps_pd(TARGET), 216));
+
+#define HADD_MUL_INORDER_PS(TARGET, YMM0, YMM1, YMM2, YMM3) \
+  TARGET = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM2), \
+  _mm256_mul_ps(YMM1, YMM3)); \
+  TARGET = _mm256_castpd_ps( \
+    _mm256_permute4x64_pd( \
+      _mm256_castps_pd(TARGET), 216));
+
 
 void CSIMD128(cdiv)(complex128 *z, const complex128 *x, const complex128 *y, const ptrdiff_t n) {
   ptrdiff_t i;
@@ -146,18 +172,11 @@ void CSIMD128(cmul)(complex128 *z, const complex128 *x, const complex128 *y, con
     YMM2 = _mm256_loadu_pd(my+i);
     YMM3 = _mm256_loadu_pd(my+i+4);
 
-    // real
-    YMM4 = _mm256_hsub_pd(_mm256_mul_pd(YMM0, YMM2),
-      _mm256_mul_pd(YMM1, YMM3));
+    HSUB_MUL_INORDER_PD(YMM4, YMM0, YMM1, YMM2, YMM3);
     // exchange real and imag in x
     YMM0 = _mm256_shuffle_pd(YMM0, YMM0, 5);
     YMM1 = _mm256_shuffle_pd(YMM1, YMM1, 5);
-    YMM5 = _mm256_hadd_pd(_mm256_mul_pd(YMM0, YMM2),
-      _mm256_mul_pd(YMM1, YMM3));
-
-    // make them in order
-    YMM4 = _mm256_permute4x64_pd(YMM4, 216);
-    YMM5 = _mm256_permute4x64_pd(YMM5, 216);
+    HADD_MUL_INORDER_PD(YMM5, YMM0, YMM1, YMM2, YMM3);
 
     MAKE_COMPLEX128(YMM0, YMM1, YMM4, YMM5);
 
@@ -188,15 +207,8 @@ void CSIMD128(muls)(complex128 *y, const complex128 *x, const complex128 c, cons
     YMM0 = _mm256_loadu_pd(mx+i);
     YMM1 = _mm256_loadu_pd(mx+i+4);
 
-    // cal real & imag
-    YMM2 = _mm256_hsub_pd(_mm256_mul_pd(YMM0, YMM15),
-      _mm256_mul_pd(YMM1, YMM15));
-    YMM3 = _mm256_hadd_pd(_mm256_mul_pd(YMM0, YMM14),
-      _mm256_mul_pd(YMM1, YMM14));
-
-    // make them in order
-    YMM2 = _mm256_permute4x64_pd(YMM2, 216);
-    YMM3 = _mm256_permute4x64_pd(YMM3, 216);
+    HSUB_MUL_INORDER_PD(YMM2, YMM0, YMM1, YMM15, YMM15);
+    HADD_MUL_INORDER_PD(YMM3, YMM0, YMM1, YMM14, YMM14);
 
     MAKE_COMPLEX128(YMM0, YMM1, YMM2, YMM3);
 
@@ -229,15 +241,8 @@ void CSIMD128(cadd)(complex128 *z, const complex128 *x, const complex128 *y, con
     YMM0 = _mm256_loadu_pd(my+i);
     YMM1 = _mm256_loadu_pd(my+i+4);
 
-    // cal real & imag
-    YMM2 = _mm256_hsub_pd(_mm256_mul_pd(YMM0, YMM15),
-      _mm256_mul_pd(YMM1, YMM15));
-    YMM3 = _mm256_hadd_pd(_mm256_mul_pd(YMM0, YMM14),
-      _mm256_mul_pd(YMM1, YMM14));
-
-    // make them in order
-    YMM2 = _mm256_permute4x64_pd(YMM2, 216);
-    YMM3 = _mm256_permute4x64_pd(YMM3, 216);
+    HSUB_MUL_INORDER_PD(YMM2, YMM0, YMM1, YMM15, YMM15);
+    HADD_MUL_INORDER_PD(YMM3, YMM0, YMM1, YMM14, YMM14);
 
     MAKE_COMPLEX128(YMM0, YMM1, YMM2, YMM3);
 
@@ -394,22 +399,11 @@ void CSIMD64(cmul)(complex64 *z, const complex64 *x, const complex64 *y, const p
     YMM2 = _mm256_loadu_ps(my+i);
     YMM3 = _mm256_loadu_ps(my+i+8);
 
-    // real
-    YMM4 = _mm256_hsub_ps(_mm256_mul_ps(YMM0, YMM2),
-      _mm256_mul_ps(YMM1, YMM3));
+    HSUB_MUL_INORDER_PS(YMM4, YMM0, YMM1, YMM2, YMM3);
     // exchange real and imag in x
     YMM0 = _mm256_shuffle_ps(YMM0, YMM0, 177);
     YMM1 = _mm256_shuffle_ps(YMM1, YMM1, 177);
-    YMM5 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM2),
-      _mm256_mul_ps(YMM1, YMM3));
-
-    // make them in order
-    YMM4 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM4), 216));
-    YMM5 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM5), 216));
+    HADD_MUL_INORDER_PS(YMM5, YMM0, YMM1, YMM2, YMM3);
 
     MAKE_COMPLEX64(YMM0, YMM1, YMM4, YMM5);
 
@@ -447,18 +441,8 @@ void CSIMD64(muls)(complex64 *y, const complex64 *x, const complex64 c, const pt
     YMM0 = _mm256_loadu_ps(mx+i);
     YMM1 = _mm256_loadu_ps(mx+i+8);
 
-    YMM2 = _mm256_hsub_ps(_mm256_mul_ps(YMM0, YMM15),
-      _mm256_mul_ps(YMM1, YMM15));
-    YMM3 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM14),
-      _mm256_mul_ps(YMM1, YMM14));
-
-    // make them in order
-    YMM2 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM2), 216));
-    YMM3 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM3), 216));
+    HSUB_MUL_INORDER_PS(YMM2, YMM0, YMM1, YMM15, YMM15);
+    HADD_MUL_INORDER_PS(YMM3, YMM0, YMM1, YMM14, YMM14);
 
     MAKE_COMPLEX64(YMM0, YMM1, YMM2, YMM3);
 
@@ -491,18 +475,8 @@ void CSIMD64(cadd)(complex64 *z, const complex64 *x, const complex64 *y, const c
     YMM0 = _mm256_loadu_ps(my+i);
     YMM1 = _mm256_loadu_ps(my+i+8);
 
-    YMM2 = _mm256_hsub_ps(_mm256_mul_ps(YMM0, YMM15),
-      _mm256_mul_ps(YMM1, YMM15));
-    YMM3 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM14),
-      _mm256_mul_ps(YMM1, YMM14));
-
-    // make them in order
-    YMM2 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM2), 216));
-    YMM3 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM3), 216));
+    HSUB_MUL_INORDER_PS(YMM2, YMM0, YMM1, YMM15, YMM15);
+    HADD_MUL_INORDER_PS(YMM3, YMM0, YMM1, YMM14, YMM14);
 
     MAKE_COMPLEX64(YMM0, YMM1, YMM2, YMM3);
 
