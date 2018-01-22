@@ -184,7 +184,7 @@ void CSIMD128(muls)(complex128 *y, const complex128 *x, const complex128 c, cons
 
   __m256d YMM15 = _mm256_set_pd(imag, real, imag, real);
   __m256d YMM14 = _mm256_set_pd(real, imag, real, imag);
-  __m256d YMM0, YMM1, YMM2;
+  __m256d YMM0, YMM1, YMM2, YMM3;
   for(i=0; i<=((len)-8); i+=8) {
     // load 4 complex numbers
     YMM0 = _mm256_loadu_pd(mx+i);
@@ -443,17 +443,17 @@ void CSIMD64(muls)(complex64 *y, const complex64 *x, const complex64 c, const pt
   float real = crealf(c);
   float imag = cimagf(c);
 
-  __m256 YMM15 = _mm256_loadu_ps( imag, real,
+  __m256 YMM15 = _mm256_set_ps( imag, real,
                                   imag, real,
                                   imag, real,
                                   imag, real);
 
-  __m256 YMM14 = _mm256_loadu_ps( real, imag,
+  __m256 YMM14 = _mm256_set_ps( real, imag,
                                   real, imag,
                                   real, imag,
                                   real, imag);
 
-  __m256 YMM0,YMM1,YMM2;
+  __m256 YMM0,YMM1,YMM2,YMM3;
   for(i=0; i<=((n)-16); i+=16) {
     YMM0 = _mm256_loadu_ps(mx+i);
     YMM1 = _mm256_loadu_ps(mx+i+8);
