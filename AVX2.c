@@ -5,6 +5,12 @@
  * 2. make real and imag in correct order
  */
 
+#define COMPLEX128_TO_M256D(REAL, IMAG) \
+  _mm256_set_pd((IMAG), (REAL), (IMAG), (REAL))
+
+#define COMPLEX64_TO_M256(REAL, IMAG) \
+  _mm256_set_ps((IMAG), (REAL), (IMAG), (REAL), (IMAG), (REAL), (IMAG), (REAL))
+
 #define MAKE_COMPLEX128(YMM0, YMM1, REAL, IMAG) \
   YMM0 = _mm256_permute2f128_pd(REAL, IMAG, 32); \
   YMM1 = _mm256_permute2f128_pd(REAL, IMAG, 49); \
@@ -119,8 +125,8 @@ void CSIMD128(divs)(complex128 *y, const complex128 *x, const complex128 c, cons
   double real = creal(c); double imag = cimag(c);
   double norm = real * real + imag * imag;
   ptrdiff_t len = 2 * n;
-  __m256d YMM15 = _mm256_set_pd(imag/norm, real/norm, imag/norm, real/norm);
-  __m256d YMM14 = _mm256_set_pd(real/norm, -imag/norm, real/norm, -imag/norm);
+  __m256d YMM15 = COMPLEX128_TO_M256D(real/norm, imag/norm);
+  __m256d YMM14 = COMPLEX128_TO_M256D(-imag/norm, real/norm);
 
   __m256d YMM0, YMM1, YMM2, YMM3;
   for (i=0; i<=((len)-8); i+=8) {
@@ -133,14 +139,8 @@ void CSIMD128(divs)(complex128 *y, const complex128 *x, const complex128 c, cons
     // [127:64]   real[2]   imag[2]
     // [191:128]  real[1]   imag[1]
     // [255:192]  real[3]   imag[3]
-    YMM2 = _mm256_hadd_pd(_mm256_mul_pd(YMM0, YMM15),
-            _mm256_mul_pd(YMM1, YMM15));
-    YMM3 = _mm256_hadd_pd(_mm256_mul_pd(YMM0, YMM14),
-            _mm256_mul_pd(YMM1, YMM14));
-
-    // make them in order
-    YMM2 = _mm256_permute4x64_pd(YMM2, 216);
-    YMM3 = _mm256_permute4x64_pd(YMM3, 216);
+    HADD_MUL_INORDER_PD(YMM2, YMM0, YMM1, YMM15, YMM15);
+    HADD_MUL_INORDER_PD(YMM3, YMM0, YMM1, YMM14, YMM14);
 
     MAKE_COMPLEX128(YMM0, YMM1, YMM2, YMM3);
 
@@ -199,8 +199,8 @@ void CSIMD128(muls)(complex128 *y, const complex128 *x, const complex128 c, cons
   double imag = cimag(c);
   ptrdiff_t len = 2 * n;
 
-  __m256d YMM15 = _mm256_set_pd(imag, real, imag, real);
-  __m256d YMM14 = _mm256_set_pd(real, imag, real, imag);
+  __m256d YMM15 = COMPLEX128_TO_M256D(real, imag);
+  __m256d YMM14 = COMPLEX128_TO_M256D(imag, real);
   __m256d YMM0, YMM1, YMM2, YMM3;
   for(i=0; i<=((len)-8); i+=8) {
     // load 4 complex numbers
@@ -233,8 +233,8 @@ void CSIMD128(cadd)(complex128 *z, const complex128 *x, const complex128 *y, con
   double real = creal(c);
   double imag = cimag(c);
 
-  __m256d YMM15 = _mm256_set_pd(imag, real, imag, real);
-  __m256d YMM14 = _mm256_set_pd(real, imag, real, imag);
+  __m256d YMM15 = COMPLEX128_TO_M256D(real, imag);
+  __m256d YMM14 = COMPLEX128_TO_M256D(imag, real);
   __m256d YMM0, YMM1, YMM2, YMM3, YMM4, YMM5;
 
   for(i=0; i<=((len)-8); i+=8) {
@@ -338,17 +338,8 @@ void CSIMD64(divs)(complex64 *y, const complex64 *x, const complex64 c, const pt
   float imag = cimagf(c);
   float norm = real * real + imag * imag;
   ptrdiff_t len = 2 * n;
-  __m256 YMM15 = _mm256_set_ps(
-    imag/norm, real/norm,
-    imag/norm, real/norm,
-    imag/norm, real/norm,
-    imag/norm, real/norm);
-  __m256 YMM14 = _mm256_set_ps(
-    real/norm, -imag/norm,
-    real/norm, -imag/norm,
-    real/norm, -imag/norm,
-    real/norm, -imag/norm
-    );
+  __m256 YMM15 = COMPLEX64_TO_M256(real/norm, imag/norm);
+  __m256 YMM14 = COMPLEX64_TO_M256(-imag/norm, real/norm);
 
   __m256 YMM0, YMM1, YMM2, YMM3;
   for (i=0; i<=((len)-16); i+=16) {
@@ -356,20 +347,8 @@ void CSIMD64(divs)(complex64 *y, const complex64 *x, const complex64 c, const pt
     YMM0 = _mm256_loadu_ps(mx+i);
     YMM1 = _mm256_loadu_ps(mx+i+8);
 
-    // cal real & imag
-    YMM2 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM15),
-            _mm256_mul_ps(YMM1, YMM15));
-    YMM3 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM14),
-            _mm256_mul_ps(YMM1, YMM14));
-
-    // make them in order
-    YMM2 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM2), 216));
-    YMM3 = _mm256_castpd_ps(
-      _mm256_permute4x64_pd(
-        _mm256_castps_pd(YMM3), 216));
-
+    HADD_MUL_INORDER_PS(YMM2, YMM0, YMM1, YMM15, YMM15);
+    HADD_MUL_INORDER_PS(YMM3, YMM0, YMM1, YMM14, YMM14);
     MAKE_COMPLEX64(YMM0, YMM1, YMM2, YMM3);
 
     _mm256_storeu_ps(my+i, YMM0);
@@ -426,15 +405,8 @@ void CSIMD64(muls)(complex64 *y, const complex64 *x, const complex64 c, const pt
   float real = crealf(c);
   float imag = cimagf(c);
 
-  __m256 YMM15 = _mm256_set_ps( imag, real,
-                                  imag, real,
-                                  imag, real,
-                                  imag, real);
-
-  __m256 YMM14 = _mm256_set_ps( real, imag,
-                                  real, imag,
-                                  real, imag,
-                                  real, imag);
+  __m256 YMM15 = COMPLEX64_TO_M256(real, imag);
+  __m256 YMM14 = COMPLEX64_TO_M256(imag, real);
 
   __m256 YMM0,YMM1,YMM2,YMM3;
   for(i=0; i<=((len)-16); i+=16) {
@@ -467,8 +439,8 @@ void CSIMD64(cadd)(complex64 *z, const complex64 *x, const complex64 *y, const c
   float real = crealf(c);
   float imag = cimagf(c);
 
-  __m256 YMM15 = _mm256_set_ps(imag, real, imag, real, imag, real, imag, real);
-  __m256 YMM14 = _mm256_set_ps(real, imag, real, imag, real, imag, real, imag);
+  __m256 YMM15 = COMPLEX64_TO_M256(real, imag);
+  __m256 YMM14 = COMPLEX64_TO_M256(imag, real);
 
   __m256 YMM0, YMM1, YMM2, YMM3;
   for(i=0;i<=((len)-16); i+=16) {
