@@ -2,6 +2,7 @@
 #define SIMD_AVX
 
 #include "general.h"
+#include "Macros.h"
 
 #ifdef CSIMD128
 #undef CSIMD128
@@ -19,8 +20,10 @@
 
 extern void CSIMD128(copy)(complex128 *y, const complex128 *x, const ptrdiff_t n);
 extern void CSIMD128(fill)(complex128 *z, const complex128 c, const ptrdiff_t n);
+extern void CSIMD128(adds)(complex128 *y, const complex128 *x, const complex128 c, const ptrdiff_t n);
 
 extern void CSIMD64(copy)(complex64 *y, const complex64 *x, const ptrdiff_t n);
 extern void CSIMD64(fill)(complex64 *z, const complex64 c, const ptrdiff_t n);
+extern void CSIMD64(adds)(complex64 *y, const complex64 *x, const complex64 c, const ptrdiff_t n);
 
 #endif

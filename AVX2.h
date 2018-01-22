@@ -2,6 +2,7 @@
 #define SIMD_AVX2
 
 #include "general.h"
+#include "Macros.h"
 
 #ifdef CSIMD128
 #undef CSIMD128
