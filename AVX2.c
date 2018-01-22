@@ -584,13 +584,13 @@ void CSIMD64(cadd)(complex64 *z, const complex64 *x, const complex64 *y, const c
     YMM1 = _mm256_permute_ps(YMM1, 216);
 
     YMM2 = _mm256_add_ps(_mm256_loadu_ps(mx+i), YMM0);
-    YMM3 = _mm256_add_ps(_mm256_loadu_ps(mx+i+4), YMM1);
+    YMM3 = _mm256_add_ps(_mm256_loadu_ps(mx+i+8), YMM1);
     _mm256_storeu_ps(mz+i, YMM2);
-    _mm256_storeu_ps(mz+i+4, YMM3);
+    _mm256_storeu_ps(mz+i+8, YMM3);
   }
 
-  off = (n) - ((n)%4);
-  for (i=0; i<((n)%4); i++) {
+  off = (n) - ((n)%8);
+  for (i=0; i<((n)%8); i++) {
     z[off+i] = x[off+i] + y[off+i] *c;
   }
 }

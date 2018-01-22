@@ -7,6 +7,6 @@
 #include <stdlib.h>
 
 #define DEBUG
-#define SCALE 9
+#define SCALE 8
 
 #endif

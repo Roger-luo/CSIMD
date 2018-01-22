@@ -14,7 +14,8 @@ following operations is implemented:
 - [x] cdiv
 - [x] divs
 - [x] cmul
-- [ ] muls
+- [x] muls
+- [ ] cadd
 
 # Acknowledge
 
