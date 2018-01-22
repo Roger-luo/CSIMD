@@ -1,29 +1,16 @@
-#include <AVX2.h>
-#include <complex.h>
-#include <stdlib.h>
+#include "general.h"
 
 int main(int argc, char const *argv[])
 {
-  int n = 4;
-  float _Complex *x = (float _Complex *)malloc(n * sizeof(float _Complex));
-  float _Complex *y = (float _Complex *)malloc(n * sizeof(float _Complex));
-  float _Complex *ans = (float _Complex *)malloc(n * sizeof(float _Complex));
-  float _Complex c = 2.0f + 3.0f * I;
+  BINARY_PREAMBLE(SCALE, float);
+  CSIMD64(divs)(y, x, c, SCALE);
 
-  int i, j;
-  for(i=0;i<n;i++)
-    x[i] = i + (i + 1) * I;
-
-  for(i=0;i<n;i++)
+  for(i=0;i<SCALE;i++)
     ans[i] = x[i] / c;
 
-  THZFloatVector_divs_AVX2(y, x, c, n);
-  for(i=0;i<n;i++)
-  {
-    if(cabs(y[i] - ans[i]) > 1e-3) exit(1);
-    printf("%f+%fim\n", crealf(y[i]), cimagf(y[i]));
-  }
-
-  free(x); free(y); free(ans);
+  showf(ans, SCALE);
+  printf("----\n");
+  showf(y, SCALE);
+  BINARY_END;
   return 0;
 }

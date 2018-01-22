@@ -122,7 +122,7 @@ void CSIMD128(divs)(complex128 *y, const complex128 *x, const complex128 c, cons
   off = (n) - ((n)%4);
 
   for (i=0; i<((n)%4); i++) {
-    y[i] = x[i] / c;
+    y[off+i] = x[off+i] / c;
   }
 }
 
@@ -214,6 +214,54 @@ void CSIMD128(muls)(complex128 *y, const complex128 *x, const complex128 c, cons
   off = (n) - ((n)%4);
   for (i=0; i<((n)%4); i++) {
     y[off+i] = x[off+i] * c;
+  }
+}
+
+void CSIMD128(cadd)(complex128 *z, const complex128 *x, const complex128 *y, const complex128 c, const ptrdiff_t n) {
+  ptrdiff_t i, off;
+  ptrdiff_t len = 2 * n;
+
+  double *mz = (double *)z;
+  double *mx = (double *)x;
+  double *my = (double *)y;
+
+  double real = creal(c);
+  double imag = cimag(c);
+
+  __m256d YMM15 = _mm256_set_pd(imag, real, imag, real);
+  __m256d YMM14 = _mm256_set_pd(real, imag, real, imag);
+  __m256d YMM0, YMM1, YMM2, YMM3, YMM4, YMM5;
+
+  for(i=0; i<=((len)-8); i+=8) {
+    YMM0 = _mm256_loadu_pd(my+i);
+    YMM1 = _mm256_loadu_pd(my+i+4);
+
+    // cal real & imag
+    YMM2 = _mm256_hsub_pd(_mm256_mul_pd(YMM0, YMM15),
+      _mm256_mul_pd(YMM1, YMM15));
+    YMM3 = _mm256_hadd_pd(_mm256_mul_pd(YMM0, YMM14),
+      _mm256_mul_pd(YMM1, YMM14));
+
+    // make them in order
+    YMM2 = _mm256_permute4x64_pd(YMM2, 216);
+    YMM3 = _mm256_permute4x64_pd(YMM3, 216);
+
+    YMM0 = _mm256_permute2f128_pd(YMM2, YMM3, 32);
+    YMM1 = _mm256_permute2f128_pd(YMM2, YMM3, 49);
+
+    // make real and imag in correct order
+    YMM0 = _mm256_permute4x64_pd(YMM0, 216);
+    YMM1 = _mm256_permute4x64_pd(YMM1, 216);
+
+    YMM2 = _mm256_add_pd(_mm256_loadu_pd(mx+i), YMM0);
+    YMM3 = _mm256_add_pd(_mm256_loadu_pd(mx+i+4), YMM1);
+    _mm256_storeu_pd(mz+i, YMM2);
+    _mm256_storeu_pd(mz+i+4, YMM3);
+  }
+
+  off = (n) - ((n)%4);
+  for (i=0; i<((n)%4); i++) {
+    z[off+i] = x[off+i] + y[off+i] * c;
   }
 }
 
@@ -326,15 +374,15 @@ void CSIMD64(divs)(complex64 *y, const complex64 *x, const complex64 c, const pt
   float norm = real * real + imag * imag;
   ptrdiff_t len = 2 * n;
   __m256 YMM15 = _mm256_set_ps(
-    real/norm, imag/norm,
-    real/norm, imag/norm,
-    real/norm, imag/norm,
-    real/norm, imag/norm);
+    imag/norm, real/norm,
+    imag/norm, real/norm,
+    imag/norm, real/norm,
+    imag/norm, real/norm);
   __m256 YMM14 = _mm256_set_ps(
-    -imag/norm, real/norm,
-    -imag/norm, real/norm,
-    -imag/norm, real/norm,
-    -imag/norm, real/norm
+    real/norm, -imag/norm,
+    real/norm, -imag/norm,
+    real/norm, -imag/norm,
+    real/norm, -imag/norm
     );
 
   __m256 YMM0, YMM1, YMM2, YMM3;
@@ -375,7 +423,7 @@ void CSIMD64(divs)(complex64 *y, const complex64 *x, const complex64 c, const pt
 
   off = (n) - ((n)%8);
   for (i=0; i<((n)%8); i++) {
-    y[i] = x[i] / c;
+    y[off+i] = x[off+i] / c;
   }
 }
 
@@ -454,7 +502,7 @@ void CSIMD64(muls)(complex64 *y, const complex64 *x, const complex64 c, const pt
                                   real, imag);
 
   __m256 YMM0,YMM1,YMM2,YMM3;
-  for(i=0; i<=((n)-16); i+=16) {
+  for(i=0; i<=((len)-16); i+=16) {
     YMM0 = _mm256_loadu_ps(mx+i);
     YMM1 = _mm256_loadu_ps(mx+i+8);
 
@@ -489,5 +537,60 @@ void CSIMD64(muls)(complex64 *y, const complex64 *x, const complex64 c, const pt
   off = (n) - ((n)%8);
   for (i=0; i<((n)%8); i++) {
     y[off+i] = x[off+i] * c;
+  }
+}
+
+void CSIMD64(cadd)(complex64 *z, const complex64 *x, const complex64 *y, const complex64 c, const ptrdiff_t n) {
+  ptrdiff_t i, off;
+  ptrdiff_t len = 2 * n;
+
+  float *mz = (float *)z;
+  float *mx = (float *)x;
+  float *my = (float *)y;
+
+  float real = crealf(c);
+  float imag = cimagf(c);
+
+  __m256 YMM15 = _mm256_set_ps(imag, real, imag, real, imag, real, imag, real);
+  __m256 YMM14 = _mm256_set_ps(real, imag, real, imag, real, imag, real, imag);
+
+  __m256 YMM0, YMM1, YMM2, YMM3;
+  for(i=0;i<=((len)-16); i+=16) {
+    YMM0 = _mm256_loadu_ps(my+i);
+    YMM1 = _mm256_loadu_ps(my+i+8);
+
+    YMM2 = _mm256_hsub_ps(_mm256_mul_ps(YMM0, YMM15),
+      _mm256_mul_ps(YMM1, YMM15));
+    YMM3 = _mm256_hadd_ps(_mm256_mul_ps(YMM0, YMM14),
+      _mm256_mul_ps(YMM1, YMM14));
+
+    // make them in order
+    YMM2 = _mm256_castpd_ps(
+      _mm256_permute4x64_pd(
+        _mm256_castps_pd(YMM2), 216));
+    YMM3 = _mm256_castpd_ps(
+      _mm256_permute4x64_pd(
+        _mm256_castps_pd(YMM3), 216));
+
+    YMM0 = _mm256_permute2f128_ps(YMM2, YMM3, 32);
+    YMM1 = _mm256_permute2f128_ps(YMM2, YMM3, 49);
+
+    // make real and imag in correct order
+    // exchange inner 64bit first
+    YMM0 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM0), 216));
+    YMM1 = _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(YMM1), 216));
+
+    YMM0 = _mm256_permute_ps(YMM0, 216);
+    YMM1 = _mm256_permute_ps(YMM1, 216);
+
+    YMM2 = _mm256_add_ps(_mm256_loadu_ps(mx+i), YMM0);
+    YMM3 = _mm256_add_ps(_mm256_loadu_ps(mx+i+4), YMM1);
+    _mm256_storeu_ps(mz+i, YMM2);
+    _mm256_storeu_ps(mz+i+4, YMM3);
+  }
+
+  off = (n) - ((n)%4);
+  for (i=0; i<((n)%4); i++) {
+    z[off+i] = x[off+i] + y[off+i] *c;
   }
 }

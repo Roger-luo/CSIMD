@@ -1,26 +1,16 @@
-#include <AVX2.h>
-#include <complex.h>
-#include <stdlib.h>
+#include "general.h"
 
 int main(int argc, char const *argv[])
 {
-  int n = 4;
-  double _Complex *x = (double _Complex *)malloc(n * sizeof(double _Complex));
-  double _Complex *y = (double _Complex *)malloc(n * sizeof(double _Complex));
-  double _Complex *ans = (double _Complex *)malloc(n * sizeof(double _Complex));
-  double _Complex c = 2.0 + 3.0 * I;
+  BINARY_PREAMBLE(SCALE, double);
+  CSIMD128(divs)(y, x, c, SCALE);
 
-  int i, j;
-  for(i=0;i<n;i++)
-    x[i] = i + (i + 1) * I;
-
-  for(i=0;i<n;i++)
+  for(i=0;i<SCALE;i++)
     ans[i] = x[i] / c;
 
-  THZDoubleVector_divs_AVX2(y, x, c, n);
-  for(i=0;i<n;i++)
-    if(cabs(y[i] - ans[i]) > 1e-10) exit(1);
-
-  free(x); free(y); free(ans);
+  show(ans, SCALE);
+  printf("----\n");
+  show(y, SCALE);
+  BINARY_END;
   return 0;
 }
