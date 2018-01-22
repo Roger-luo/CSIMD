@@ -13,6 +13,8 @@ following operations is implemented:
 ## AVX2
 - [x] cdiv
 - [x] divs
+- [x] cmul
+- [ ] muls
 
 # Acknowledge
 

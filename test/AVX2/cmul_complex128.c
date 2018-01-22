@@ -1,26 +1,30 @@
+#include <stdlib.h>
 #include <AVX2.h>
 #include <complex.h>
-#include <stdlib.h>
 
 int main(int argc, char const *argv[])
 {
   int n = 4;
   double _Complex *x = (double _Complex *)malloc(n * sizeof(double _Complex));
   double _Complex *y = (double _Complex *)malloc(n * sizeof(double _Complex));
+  double _Complex *z = (double _Complex *)malloc(n * sizeof(double _Complex));
   double _Complex *ans = (double _Complex *)malloc(n * sizeof(double _Complex));
-  double _Complex c = 2.0 + 3.0 * I;
 
   int i, j;
   for(i=0;i<n;i++)
     x[i] = i + (i + 1) * I;
 
-  for(i=0;i<n;i++)
-    ans[i] = x[i] / c;
+  for(i=0, j=n;i<n;i++,j--)
+    y[i] = j + (j - 1) * I;
 
-  THZDoubleVector_divs_AVX2(y, x, c, n);
   for(i=0;i<n;i++)
-    if(cabs(y[i] - ans[i]) > 1e-10) exit(1);
+    ans[i] = x[i] * y[i];
 
-  free(x); free(y); free(ans);
+  THZDoubleVector_cmul_AVX2(z, x, y, n);
+
+  for(i=0;i<n;i++)
+    if(cabs(z[i] - ans[i]) > 1e-10) exit(1);
+
+  free(x); free(y); free(z); free(ans);
   return 0;
 }

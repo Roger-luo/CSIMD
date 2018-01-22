@@ -41,7 +41,8 @@ void CSIMD128(fill)(complex128 *z, const complex128 c, const ptrdiff_t n) {
   ptrdiff_t off;
   double *x = (double *)z;
   ptrdiff_t len = 2 * n;
-  __m256d YMM0 = _mm256_set_pd(creal(c), cimag(c), creal(c), cimag(c));
+  __m256d YMM0 = _mm256_set_pd(
+    cimag(c), creal(c), cimag(c), creal(c));
   for(i=0;i<=((len)-16); i+=16) {
     _mm256_storeu_pd((x)+i, YMM0);
     _mm256_storeu_pd((x)+i+4, YMM0);
@@ -58,10 +59,10 @@ void CSIMD64(fill)(complex64 *z, const complex64 c, const ptrdiff_t n) {
   ptrdiff_t i;
   ptrdiff_t off;
   __m256 YMM0 = _mm256_set_ps(
-                  creal(c), cimag(c),
-                  creal(c), cimag(c),
-                  creal(c), cimag(c),
-                  creal(c), cimag(c));
+                  cimag(c), creal(c),
+                  cimag(c), creal(c),
+                  cimag(c), creal(c),
+                  cimag(c), creal(c));
   float *x = (float *)z;
   ptrdiff_t len = 2 * n;
 

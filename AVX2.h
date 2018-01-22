@@ -19,8 +19,12 @@
 
 extern void CSIMD128(cdiv)(complex128 *z, const complex128 *x, const complex128 *y, const ptrdiff_t n);
 extern void CSIMD128(divs)(complex128 *y, const complex128 *x, const complex128 c, const ptrdiff_t n);
+extern void CSIMD128(cmul)(complex128 *z, const complex128 *x, const complex128 *y, const ptrdiff_t n);
+extern void CSIMD128(muls)(complex128 *y, const complex128 *x, const complex128 c, const ptrdiff_t n);
 
 extern void CSIMD64(cdiv)(complex64 *z, const complex64 *x, const complex64 *y, const ptrdiff_t n);
 extern void CSIMD64(divs)(complex64 *y, const complex64 *x, const complex64 c, const ptrdiff_t n);
+extern void CSIMD64(cmul)(complex64 *z, const complex64 *x, const complex64 *y, const ptrdiff_t n);
+extern void CSIMD64(muls)(complex64 *y, const complex64 *x, const complex64 c, const ptrdiff_t n);
 
 #endif
